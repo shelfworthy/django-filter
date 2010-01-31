@@ -148,6 +148,7 @@ class MultipleChoiceFilterTest(TestCase):
 filter_tests = """
 >>> from datetime import datetime
 >>> from django import forms
+>>> from django.db.models import Q
 >>> from django.core.management import call_command
 >>> import django_filters
 >>> from django_filters import FilterSet
@@ -217,7 +218,7 @@ filter_tests = """
 <tr><th><label for="id_username">Username:</label></th><td><input type="text" name="username" value="alex" id="id_username" /></td></tr>
 
 >>> class F(FilterSet):
-...     username = django_filters.CharFilter(action=lambda qs, value: qs.filter(**{'username__startswith': value}))
+...     username = django_filters.CharFilter(action=lambda value: Q(**{'username__startswith': value}))
 ...     class Meta:
 ...         model = User
 ...         fields = ['username']
@@ -278,7 +279,7 @@ filter_tests = """
 [<User: alex>, <User: aaron>]
 >>> f = F({'favorite_books': ['1', '3']}, queryset=User.objects.all())
 >>> f.qs
-[<User: alex>, <User: aaron>]
+[<User: alex>, <User: aaron>, <User: aaron>]
 >>> f = F({'favorite_books': ['2']}, queryset=User.objects.all())
 >>> f.qs
 [<User: alex>]

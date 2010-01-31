@@ -50,7 +50,7 @@ class Filter(object):
                     label=self.label, widget=self.widget, **self.extra)
         return self._field
 
-    def filter(self, qs, value):
+    def filter(self, value):
         if isinstance(value, (list, tuple)):
             lookup = str(value[1])
             if not lookup:
@@ -59,8 +59,7 @@ class Filter(object):
         else:
             lookup = self.lookup_type
         if value:
-            return qs.filter(**{'%s__%s' % (self.name, lookup): value})
-        return qs
+            return Q(**{'%s__%s' % (self.name, lookup): value})
 
 class CharFilter(Filter):
     field_class = forms.CharField
@@ -68,10 +67,9 @@ class CharFilter(Filter):
 class BooleanFilter(Filter):
     field_class = forms.NullBooleanField
 
-    def filter(self, qs, value):
+    def filter(self, value):
         if value is not None:
-            return qs.filter(**{self.name: value})
-        return qs
+            return Q(**{self.name: value})
 
 class ChoiceFilter(Filter):
     field_class = forms.ChoiceField
@@ -82,16 +80,17 @@ class MultipleChoiceFilter(Filter):
     """
     field_class = forms.MultipleChoiceField
 
-    def filter(self, qs, value):
+    def filter(self, value):
         value = value or ()
+        q = Q()
         # TODO: this is a bit of a hack, but ModelChoiceIterator doesn't have a
         # __len__ method
         if len(value) == len(list(self.field.choices)):
-            return qs
-        q = Q()
+            return q
+
         for v in value:
             q |= Q(**{self.name: v})
-        return qs.filter(q).distinct()
+        return q
 
 class DateFilter(Filter):
     field_class = forms.DateField
@@ -114,28 +113,27 @@ class NumberFilter(Filter):
 class RangeFilter(Filter):
     field_class = RangeField
 
-    def filter(self, qs, value):
+    def filter(self, value):
         if value:
-            return qs.filter(**{'%s__range' % self.name: (value.start, value.stop)})
-        return qs
+            return Q(**{'%s__range' % self.name: (value.start, value.stop)})
 
 class DateRangeFilter(ChoiceFilter):
     options = {
-        '': (_('Any Date'), lambda qs, name: qs.all()),
-        1: (_('Today'), lambda qs, name: qs.filter(**{
+        '': (_('Any Date'), lambda name: Q()),
+        1: (_('Today'), lambda name: Q(**{
             '%s__year' % name: datetime.today().year,
             '%s__month' % name: datetime.today().month,
             '%s__day' % name: datetime.today().day
         })),
-        2: (_('Past 7 days'), lambda qs, name: qs.filter(**{
+        2: (_('Past 7 days'), lambda name: Q(**{
             '%s__gte' % name: (datetime.today() - timedelta(days=7)).strftime('%Y-%m-%d'),
             '%s__lt' % name: (datetime.today()+timedelta(days=1)).strftime('%Y-%m-%d'),
         })),
-        3: (_('This month'), lambda qs, name: qs.filter(**{
+        3: (_('This month'), lambda name: Q(**{
             '%s__year' % name: datetime.today().year,
             '%s__month' % name: datetime.today().month
         })),
-        4: (_('This year'), lambda qs, name: qs.filter(**{
+        4: (_('This year'), lambda name: Q(**{
             '%s__year' % name: datetime.today().year,
         })),
     }
@@ -144,12 +142,12 @@ class DateRangeFilter(ChoiceFilter):
         kwargs['choices'] = [(key, value[0]) for key, value in self.options.iteritems()]
         super(DateRangeFilter, self).__init__(*args, **kwargs)
 
-    def filter(self, qs, value):
+    def filter(self, value):
         try:
             value = int(value)
         except (ValueError, TypeError):
             value = ''
-        return self.options[value][1](qs, self.name)
+        return self.options[value][1](self.name)
 
 class AllValuesFilter(ChoiceFilter):
     @property

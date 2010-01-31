@@ -218,6 +218,7 @@ class BaseFilterSet(object):
     @property
     def qs(self):
         if not hasattr(self, '_qs'):
+            q = models.Q()
             qs = self.queryset.all()
             for name, filter_ in self.filters.iteritems():
                 try:
@@ -226,7 +227,9 @@ class BaseFilterSet(object):
                     else:
                         data = self.form.initial.get(name, self.form[name].field.initial)
                     val = self.form.fields[name].clean(data)
-                    qs = filter_.filter(qs, val)
+                    q_val = filter_.filter(val)
+                    if q_val:
+                        q &= q_val
                 except forms.ValidationError:
                     pass
             if self._meta.order_by:
@@ -236,7 +239,7 @@ class BaseFilterSet(object):
                         qs = qs.order_by(value)
                 except forms.ValidationError:
                     pass
-            self._qs = qs
+            self._qs = qs.filter(q)
         return self._qs
 
     @property
