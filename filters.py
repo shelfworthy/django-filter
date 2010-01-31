@@ -1,3 +1,4 @@
+import string
 from datetime import datetime, timedelta
 
 from django import forms
@@ -11,7 +12,7 @@ __all__ = [
     'Filter', 'CharFilter', 'BooleanFilter', 'ChoiceFilter',
     'MultipleChoiceFilter', 'DateFilter', 'DateTimeFilter', 'TimeFilter',
     'ModelChoiceFilter', 'ModelMultipleChoiceFilter', 'NumberFilter',
-    'RangeFilter', 'DateRangeFilter', 'AllValuesFilter',
+    'RangeFilter', 'DateRangeFilter', 'AllValuesFilter', 'ABCFilter',
 ]
 
 LOOKUP_TYPES = sorted(QUERY_TERMS.keys())
@@ -70,6 +71,25 @@ class BooleanFilter(Filter):
     def filter(self, value):
         if value is not None:
             return Q(**{self.name: value})
+            
+        
+class ABCFilter(Filter):
+    '''Filter by first letter'''
+    field_class = forms.ChoiceField
+    
+    def __init__(self, num_character='#', **kw):
+        super(ABCFilter, self).__init__(**kw)
+        
+        if not 'choices' in self.extra:
+            self.extra['choices'] = [(x, x) for x in string.ascii_uppercase + num_character]
+    
+    def filter(self, value):
+    	if value == '#':
+    		q = Q()
+    		for i in string.ascii_lowercase:
+    			q &= ~Q(title__istartswith=i)
+    		return q
+    	return Q(title__istartswith=value)
 
 class ChoiceFilter(Filter):
     field_class = forms.ChoiceField
