@@ -92,9 +92,9 @@ class ABCFilter(Filter):
     	if value == '#':
     		q = Q()
     		for i in string.ascii_lowercase:
-    			q &= ~Q(title__istartswith=i)
+    			q &= ~Q(**{'%s__istartswith' % self.name: i})
     		return q
-    	return Q(title__istartswith=value)
+    	return Q(**{'%s__istartswith' % self.name: value})
 
 class ChoiceFilter(Filter):
     field_class = forms.ChoiceField
